@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: n8n-shop-automation
+    env: docker
+    image: docker.n8n.io/n8nio/n8n
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: N8N_PORT
+        value: 5678
+      - key: N8N_PROTOCOL
+        value: https
+      - key: NODE_ENV
+        value: production
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_HOST
+        value: db.ersnxvniqqxmuhmowolz.supabase.co
+      - key: DB_POSTGRESDB_PORT
+        value: 5432
+      - key: DB_POSTGRESDB_DATABASE
+        value: postgres
+      - key: DB_POSTGRESDB_USER
+        value: postgres
+      - key: DB_POSTGRESDB_PASSWORD
+        sync: false # User must input Supabase Password in Render Dashboard
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: WEBHOOK_URL
+        sync: false # User must input the Render URL after creation

@@ -1,0 +1,891 @@
+import { useState } from 'react';
+import { Save, Smartphone, Monitor, Check, Plus, Zap } from 'lucide-react';
+import { useStore } from '../../contexts/StoreContext';
+import Header from '../../components/store/Header';
+import Carousel from '../../components/store/Carousel';
+import ProductFilters from '../../components/store/ProductFilters';
+import Footer from '../../components/store/Footer';
+import QuickEditWrapper from '../../components/builder/QuickEditWrapper';
+import TextToolbar from '../../components/builder/TextToolbar';
+import CarouselToolbar from '../../components/builder/CarouselToolbar';
+import CarouselSlideToolbar from '../../components/builder/CarouselSlideToolbar';
+import FooterToolbar from '../../components/builder/FooterToolbar';
+import QuickEditPopover from '../../components/builder/QuickEditPopover';
+import SlideEditPopover from '../../components/builder/SlideEditPopover';
+
+const StoreBuilder = () => {
+    const { storeConfig, updateStoreConfig, updateColors, publishStore, products } = useStore();
+    const [activeTab, setActiveTab] = useState('design');
+    const [previewMode, setPreviewMode] = useState('mobile');
+    const [saved, setSaved] = useState(false);
+
+    // Quick Edit State
+    const [quickEditMode, setQuickEditMode] = useState(false);
+    const [activeEditElement, setActiveEditElement] = useState(null);
+    const [activePopover, setActivePopover] = useState(null);
+    const [activeSlideIndex, setActiveSlideIndex] = useState(null);
+    const [slideEditPopover, setSlideEditPopover] = useState(null);
+
+    const handleSave = () => {
+        publishStore();
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+    };
+
+    const handleQuickEditAction = (element, action) => {
+        console.log(`Edit ${element} with action ${action}`);
+
+        if (element === 'header') {
+            if (action === 'text') {
+                setActivePopover({
+                    type: 'text',
+                    initialValue: storeConfig.name,
+                    onSave: (val) => updateStoreConfig({ name: val }),
+                    position: { top: '20%', left: '50%' }
+                });
+            } else if (action === 'color') {
+                setActivePopover({
+                    type: 'color',
+                    initialValue: storeConfig.colors.primary,
+                    onSave: (val) => updateColors({ primary: val }),
+                    position: { top: '20%', left: '50%' }
+                });
+            } else if (action === 'logo') {
+                setActivePopover({
+                    type: 'image',
+                    initialValue: storeConfig.logo,
+                    onSave: (val) => updateStoreConfig({ logo: val }),
+                    position: { top: '20%', left: '50%' }
+                });
+            }
+        } else if (element === 'carousel') {
+            if (action === 'add') {
+                setActivePopover({
+                    type: 'image',
+                    initialValue: '',
+                    onSave: (val) => {
+                        const newSlide = {
+                            id: Date.now(),
+                            image: val || 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+                            title: 'Nueva Oferta',
+                            description: 'Descripción'
+                        };
+                        const currentSlides = Array.isArray(storeConfig.carousel) ? storeConfig.carousel : (storeConfig.carousel?.slides || []);
+                        updateStoreConfig({
+                            carousel: {
+                                ...storeConfig.carousel,
+                                slides: [...currentSlides, newSlide]
+                            }
+                        });
+                    },
+                    position: { top: '40%', left: '50%' }
+                });
+            }
+        } else if (element === 'footer') {
+            if (action === 'description') {
+                setActivePopover({
+                    type: 'textarea',
+                    initialValue: storeConfig.description,
+                    onSave: (val) => updateStoreConfig({ description: val }),
+                    position: { top: '80%', left: '50%' }
+                });
+            } else if (action === 'contact') {
+                setActivePopover({
+                    type: 'multi-field',
+                    initialValue: storeConfig.footer?.contact || {},
+                    fields: [
+                        { key: 'phone', label: 'Teléfono', placeholder: '+57 300...' },
+                        { key: 'email', label: 'Email', placeholder: 'contacto@...' },
+                        { key: 'whatsapp', label: 'WhatsApp', placeholder: '300...' },
+                        { key: 'address', label: 'Dirección', placeholder: 'Calle 123...' }
+                    ],
+                    onSave: (val) => updateStoreConfig({
+                        footer: { ...storeConfig.footer, contact: val }
+                    }),
+                    position: { top: '70%', left: '50%' }
+                });
+            } else if (action === 'social') {
+                setActivePopover({
+                    type: 'multi-field',
+                    initialValue: {
+                        facebook: storeConfig.footer?.social?.facebook?.url || '',
+                        instagram: storeConfig.footer?.social?.instagram?.url || '',
+                        tiktok: storeConfig.footer?.social?.tiktok?.url || '',
+                        youtube: storeConfig.footer?.social?.youtube?.url || ''
+                    },
+                    fields: [
+                        { key: 'facebook', label: 'Facebook URL', placeholder: 'https://facebook.com/...' },
+                        { key: 'instagram', label: 'Instagram URL', placeholder: 'https://instagram.com/...' },
+                        { key: 'tiktok', label: 'TikTok URL', placeholder: 'https://tiktok.com/...' },
+                        { key: 'youtube', label: 'YouTube URL', placeholder: 'https://youtube.com/...' }
+                    ],
+                    onSave: (val) => {
+                        const newSocial = {
+                            facebook: { show: !!val.facebook, url: val.facebook },
+                            instagram: { show: !!val.instagram, url: val.instagram },
+                            tiktok: { show: !!val.tiktok, url: val.tiktok },
+                            youtube: { show: !!val.youtube, url: val.youtube }
+                        };
+                        updateStoreConfig({
+                            footer: { ...storeConfig.footer, social: newSocial }
+                        });
+                    },
+                    position: { top: '70%', left: '50%' }
+                });
+            } else if (action === 'color') {
+                setActivePopover({
+                    type: 'color',
+                    initialValue: storeConfig.colors.backgroundSecondary || '#1f2937',
+                    onSave: (val) => updateColors({ backgroundSecondary: val }),
+                    position: { top: '80%', left: '50%' }
+                });
+            }
+        }
+
+        setActiveEditElement(null);
+    };
+
+    const handleCarouselSlideAction = (slideIndex, action) => {
+        const slides = storeConfig.carousel?.slides || [];
+
+        if (action === 'edit') {
+            setSlideEditPopover({
+                slideIndex,
+                initialValue: slides[slideIndex],
+                onSave: (updatedSlide) => {
+                    const newSlides = [...slides];
+                    newSlides[slideIndex] = { ...slides[slideIndex], ...updatedSlide };
+                    updateStoreConfig({
+                        carousel: { ...storeConfig.carousel, slides: newSlides }
+                    });
+                }
+            });
+        } else if (action === 'delete') {
+            if (confirm('¿Eliminar este slide?')) {
+                const newSlides = slides.filter((_, i) => i !== slideIndex);
+                updateStoreConfig({
+                    carousel: { ...storeConfig.carousel, slides: newSlides }
+                });
+                setActiveSlideIndex(null);
+            }
+        } else if (action === 'moveUp') {
+            if (slideIndex > 0) {
+                const newSlides = [...slides];
+                [newSlides[slideIndex - 1], newSlides[slideIndex]] = [newSlides[slideIndex], newSlides[slideIndex - 1]];
+                updateStoreConfig({
+                    carousel: { ...storeConfig.carousel, slides: newSlides }
+                });
+            }
+        } else if (action === 'moveDown') {
+            if (slideIndex < slides.length - 1) {
+                const newSlides = [...slides];
+                [newSlides[slideIndex], newSlides[slideIndex + 1]] = [newSlides[slideIndex + 1], newSlides[slideIndex]];
+                updateStoreConfig({
+                    carousel: { ...storeConfig.carousel, slides: newSlides }
+                });
+            }
+        } else if (action === 'toggleButton') {
+            const newSlides = [...slides];
+            newSlides[slideIndex] = {
+                ...slides[slideIndex],
+                showButton: !slides[slideIndex].showButton
+            };
+            updateStoreConfig({
+                carousel: { ...storeConfig.carousel, slides: newSlides }
+            });
+        }
+    };
+
+
+    return (
+        <div style={{ display: 'flex', height: 'calc(100vh - 80px)', gap: '1rem' }}>
+            {/* Left Panel - Controls */}
+            <div style={{
+                width: '400px',
+                background: 'white',
+                borderRadius: 'var(--radius-lg)',
+                boxShadow: 'var(--shadow-md)',
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+            }}>
+                {/* Tabs */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--gray-200)' }}>
+                    <button
+                        onClick={() => setActiveTab('design')}
+                        style={{
+                            flex: 1,
+                            padding: '1rem',
+                            background: activeTab === 'design' ? 'var(--bg-primary)' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'design' ? '2px solid var(--primary)' : 'none',
+                            fontWeight: '600',
+                            color: activeTab === 'design' ? 'var(--primary)' : 'var(--text-secondary)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Diseño
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('content')}
+                        style={{
+                            flex: 1,
+                            padding: '1rem',
+                            background: activeTab === 'content' ? 'var(--bg-primary)' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'content' ? '2px solid var(--primary)' : 'none',
+                            fontWeight: '600',
+                            color: activeTab === 'content' ? 'var(--primary)' : 'var(--text-secondary)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Contenido
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('products')}
+                        style={{
+                            flex: 1,
+                            padding: '1rem',
+                            background: activeTab === 'products' ? 'var(--bg-primary)' : 'transparent',
+                            border: 'none',
+                            borderBottom: activeTab === 'products' ? '2px solid var(--primary)' : 'none',
+                            fontWeight: '600',
+                            color: activeTab === 'products' ? 'var(--primary)' : 'var(--text-secondary)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Productos
+                    </button>
+                </div>
+
+                {/* Tab Content */}
+                <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem' }}>
+                    {activeTab === 'design' && (
+                        <div className="space-y-6">
+                            <div className="form-group">
+                                <label className="form-label">Tema</label>
+                                <select
+                                    className="form-input"
+                                    value={storeConfig.theme}
+                                    onChange={(e) => updateStoreConfig({ theme: e.target.value })}
+                                >
+                                    <option value="mtr-theme">Moderno (MTR)</option>
+                                    <option value="walker-theme">Elegante (Walker)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Color Principal</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        type="color"
+                                        value={storeConfig.colors.primary}
+                                        onChange={(e) => updateColors({ primary: e.target.value })}
+                                        style={{ width: '40px', height: '40px', padding: 0, border: 'none', borderRadius: '4px' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={storeConfig.colors.primary}
+                                        onChange={(e) => updateColors({ primary: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Color de Fondo</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        type="color"
+                                        value={storeConfig.colors.background}
+                                        onChange={(e) => updateColors({ background: e.target.value })}
+                                        style={{ width: '40px', height: '40px', padding: 0, border: 'none', borderRadius: '4px' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        value={storeConfig.colors.background}
+                                        onChange={(e) => updateColors({ background: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'content' && (
+                        <div className="space-y-6">
+                            <div className="form-group">
+                                <label className="form-label">Nombre de la Tienda</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={storeConfig.name}
+                                    onChange={(e) => updateStoreConfig({ name: e.target.value })}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Logo URL</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={storeConfig.logo}
+                                    onChange={(e) => updateStoreConfig({ logo: e.target.value })}
+                                    placeholder="https://..."
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Descripción</label>
+                                <textarea
+                                    className="form-input"
+                                    value={storeConfig.description}
+                                    onChange={(e) => updateStoreConfig({ description: e.target.value })}
+                                    rows={3}
+                                />
+                            </div>
+
+                            <div className="form-section">
+                                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Contacto</h4>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Teléfono"
+                                        value={storeConfig.footer?.contact?.phone || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: { ...storeConfig.footer, contact: { ...storeConfig.footer?.contact, phone: e.target.value } }
+                                        })}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Email"
+                                        value={storeConfig.footer?.contact?.email || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: { ...storeConfig.footer, contact: { ...storeConfig.footer?.contact, email: e.target.value } }
+                                        })}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="WhatsApp"
+                                        value={storeConfig.footer?.contact?.whatsapp || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: { ...storeConfig.footer, contact: { ...storeConfig.footer?.contact, whatsapp: e.target.value } }
+                                        })}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Dirección"
+                                        value={storeConfig.footer?.contact?.address || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: { ...storeConfig.footer, contact: { ...storeConfig.footer?.contact, address: e.target.value } }
+                                        })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Redes Sociales</h4>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Facebook URL"
+                                        value={storeConfig.footer?.social?.facebook?.url || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: {
+                                                ...storeConfig.footer,
+                                                social: {
+                                                    ...storeConfig.footer?.social,
+                                                    facebook: { show: !!e.target.value, url: e.target.value }
+                                                }
+                                            }
+                                        })}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="Instagram URL"
+                                        value={storeConfig.footer?.social?.instagram?.url || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: {
+                                                ...storeConfig.footer,
+                                                social: {
+                                                    ...storeConfig.footer?.social,
+                                                    instagram: { show: !!e.target.value, url: e.target.value }
+                                                }
+                                            }
+                                        })}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="TikTok URL"
+                                        value={storeConfig.footer?.social?.tiktok?.url || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: {
+                                                ...storeConfig.footer,
+                                                social: {
+                                                    ...storeConfig.footer?.social,
+                                                    tiktok: { show: !!e.target.value, url: e.target.value }
+                                                }
+                                            }
+                                        })}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="YouTube URL"
+                                        value={storeConfig.footer?.social?.youtube?.url || ''}
+                                        onChange={(e) => updateStoreConfig({
+                                            footer: {
+                                                ...storeConfig.footer,
+                                                social: {
+                                                    ...storeConfig.footer?.social,
+                                                    youtube: { show: !!e.target.value, url: e.target.value }
+                                                }
+                                            }
+                                        })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-section">
+                                <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Carrusel</h4>
+                                <div className="space-y-2">
+                                    {(storeConfig.carousel?.slides || []).map((slide, index) => (
+                                        <div key={slide.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                                            <img src={slide.image} alt="slide" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                value={slide.image}
+                                                onChange={(e) => {
+                                                    const newSlides = [...storeConfig.carousel.slides];
+                                                    newSlides[index] = { ...slide, image: e.target.value };
+                                                    updateStoreConfig({ carousel: { ...storeConfig.carousel, slides: newSlides } });
+                                                }}
+                                                style={{ flex: 1 }}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const newSlides = storeConfig.carousel.slides.filter((_, i) => i !== index);
+                                                    updateStoreConfig({ carousel: { ...storeConfig.carousel, slides: newSlides } });
+                                                }}
+                                                style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
+                                            >
+                                                <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        className="btn btn-sm btn-outline"
+                                        onClick={() => {
+                                            const newSlide = {
+                                                id: Date.now(),
+                                                image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+                                                title: 'Nueva Oferta',
+                                                description: 'Descripción'
+                                            };
+                                            updateStoreConfig({
+                                                carousel: {
+                                                    ...storeConfig.carousel,
+                                                    slides: [...(storeConfig.carousel?.slides || []), newSlide]
+                                                }
+                                            });
+                                        }}
+                                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                    >
+                                        <Plus size={16} /> Añadir Slide
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'products' && (
+                        <div className="space-y-6">
+                            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                <p>Gestiona tus productos en la sección dedicada de Productos</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Actions */}
+                <div style={{
+                    padding: '1rem',
+                    borderTop: '1px solid var(--gray-200)',
+                    display: 'flex',
+                    justifyContent: 'flex-end'
+                }}>
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleSave}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    >
+                        {saved ? <Check size={20} /> : <Save size={20} />}
+                        {saved ? 'Guardado' : 'Guardar y Publicar'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Right Panel - Preview */}
+            <div style={{
+                flex: 1,
+                background: 'var(--bg-secondary)',
+                borderRadius: 'var(--radius-lg)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden'
+            }}>
+                {/* Preview Controls */}
+                <div style={{
+                    position: 'absolute',
+                    top: '1rem',
+                    right: '1rem',
+                    display: 'flex',
+                    gap: '0.5rem',
+                    background: 'white',
+                    padding: '0.5rem',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-md)',
+                    zIndex: 10
+                }}>
+                    <button
+                        onClick={() => setQuickEditMode(!quickEditMode)}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            background: quickEditMode ? 'var(--primary)' : 'transparent',
+                            color: quickEditMode ? 'white' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}
+                        title="Edición Rápida"
+                    >
+                        <Zap size={20} />
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>Edición Rápida</span>
+                    </button>
+                    <div style={{ width: '1px', background: 'var(--gray-200)', margin: '0 0.25rem' }} />
+                    <button
+                        onClick={() => setPreviewMode('mobile')}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            background: previewMode === 'mobile' ? 'var(--bg-primary)' : 'transparent',
+                            color: previewMode === 'mobile' ? 'var(--primary)' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Smartphone size={20} />
+                    </button>
+                    <button
+                        onClick={() => setPreviewMode('desktop')}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            background: previewMode === 'desktop' ? 'var(--bg-primary)' : 'transparent',
+                            color: previewMode === 'desktop' ? 'var(--primary)' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Monitor size={20} />
+                    </button>
+                </div>
+
+                {/* Phone Frame */}
+                <div className={`mobile-frame ${storeConfig.theme}`} style={{
+                    width: previewMode === 'mobile' ? '375px' : '100%',
+                    height: previewMode === 'mobile' ? '812px' : '100%',
+                    maxHeight: previewMode === 'mobile' ? '90vh' : '100%',
+                    borderRadius: previewMode === 'mobile' ? '40px' : '0',
+                    border: previewMode === 'mobile' ? '12px solid #1a1a1a' : 'none',
+                    background: storeConfig.colors.background,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    boxShadow: previewMode === 'mobile' ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : 'none',
+                    transition: 'all 0.3s ease'
+                }}>
+                    {/* Notch for mobile */}
+                    {previewMode === 'mobile' && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: '150px',
+                            height: '30px',
+                            background: '#1a1a1a',
+                            borderBottomLeftRadius: '20px',
+                            borderBottomRightRadius: '20px',
+                            zIndex: 1000
+                        }} />
+                    )}
+
+                    {/* Store Content */}
+                    <div style={{
+                        height: '100%',
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        paddingTop: previewMode === 'mobile' ? '30px' : '0'
+                    }}>
+                        <QuickEditWrapper
+                            isEnabled={quickEditMode}
+                            onEdit={() => setActiveEditElement({ type: 'header' })}
+                            type="header"
+                        >
+                            <Header cartCount={0} />
+                            {activeEditElement?.type === 'header' && (
+                                <TextToolbar
+                        <Footer />
+                        {activeEditElement?.type === 'footer' && (
+                                <FooterToolbar
+                                    onAction={(action) => handleQuickEditAction('footer', action)}
+                                />
+                            )}
+                        </QuickEditWrapper>
+                    </div>
+
+                    {/* Active Popover */}
+                    {activePopover && (
+                        <QuickEditPopover
+                            type={activePopover.type}
+                            initialValue={activePopover.initialValue}
+                            fields={activePopover.fields}
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const newSlides = storeConfig.carousel.slides.filter((_, i) => i !== index);
+                                                    updateStoreConfig({ carousel: { ...storeConfig.carousel, slides: newSlides } });
+                                                }}
+                                                style={{ color: 'red', border: 'none', background: 'none', cursor: 'pointer' }}
+                                            >
+                                                <Plus size={20} style={{ transform: 'rotate(45deg)' }} />
+                                            </button>
+                                        </div>
+                                    ))}
+                <button
+                    className="btn btn-sm btn-outline"
+                    onClick={() => {
+                        const newSlide = {
+                            id: Date.now(),
+                            image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800',
+                            title: 'Nueva Oferta',
+                            description: 'Descripción'
+                        };
+                        updateStoreConfig({
+                            carousel: {
+                                ...storeConfig.carousel,
+                                slides: [...(storeConfig.carousel?.slides || []), newSlide]
+                            }
+                        });
+                    }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                >
+                    <Plus size={16} /> Añadir Slide
+                </button>
+            </div>
+        </div>
+                        </div >
+                    )}
+
+{
+    activeTab === 'products' && (
+        <div className="space-y-6">
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                <p>Gestiona tus productos en la sección dedicada de Productos</p>
+            </div>
+        </div>
+    )
+}
+                </div >
+
+    {/* Footer Actions */ }
+    < div style = {{
+    padding: '1rem',
+        borderTop: '1px solid var(--gray-200)',
+            display: 'flex',
+                justifyContent: 'flex-end'
+}}>
+    <button
+        className="btn btn-primary"
+        onClick={handleSave}
+        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+    >
+        {saved ? <Check size={20} /> : <Save size={20} />}
+        {saved ? 'Guardado' : 'Guardar y Publicar'}
+    </button>
+                </div >
+            </div >
+
+    {/* Right Panel - Preview */ }
+    < div style = {{
+    flex: 1,
+        background: 'var(--bg-secondary)',
+            borderRadius: 'var(--radius-lg)',
+                display: 'flex',
+                    flexDirection: 'column',
+                        alignItems: 'center',
+                            justifyContent: 'center',
+                                position: 'relative',
+                                    overflow: 'hidden'
+}}>
+    {/* Preview Controls */ }
+    < div style = {{
+    position: 'absolute',
+        top: '1rem',
+            right: '1rem',
+                display: 'flex',
+                    gap: '0.5rem',
+                        background: 'white',
+                            padding: '0.5rem',
+                                borderRadius: 'var(--radius-lg)',
+                                    boxShadow: 'var(--shadow-md)',
+                                        zIndex: 10
+}}>
+                    <button
+                        onClick={() => setQuickEditMode(!quickEditMode)}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            background: quickEditMode ? 'var(--primary)' : 'transparent',
+                            color: quickEditMode ? 'white' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}
+                        title="Edición Rápida"
+                    >
+                        <Zap size={20} />
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>Edición Rápida</span>
+                    </button>
+                    <div style={{ width: '1px', background: 'var(--gray-200)', margin: '0 0.25rem' }} />
+                    <button
+                        onClick={() => setPreviewMode('mobile')}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            background: previewMode === 'mobile' ? 'var(--bg-primary)' : 'transparent',
+                            color: previewMode === 'mobile' ? 'var(--primary)' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Smartphone size={20} />
+                    </button>
+                    <button
+                        onClick={() => setPreviewMode('desktop')}
+                        style={{
+                            padding: '0.5rem',
+                            border: 'none',
+                            background: previewMode === 'desktop' ? 'var(--bg-primary)' : 'transparent',
+                            color: previewMode === 'desktop' ? 'var(--primary)' : 'var(--text-secondary)',
+                            borderRadius: 'var(--radius-md)',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <Monitor size={20} />
+                    </button>
+                </div >
+
+    {/* Phone Frame */ }
+    < div className = {`mobile-frame ${storeConfig.theme}`} style = {{
+    width: previewMode === 'mobile' ? '375px' : '100%',
+        height: previewMode === 'mobile' ? '812px' : '100%',
+            maxHeight: previewMode === 'mobile' ? '90vh' : '100%',
+                borderRadius: previewMode === 'mobile' ? '40px' : '0',
+                    border: previewMode === 'mobile' ? '12px solid #1a1a1a' : 'none',
+                        background: storeConfig.colors.background,
+                            overflow: 'hidden',
+                                position: 'relative',
+                                    boxShadow: previewMode === 'mobile' ? '0 25px 50px -12px rgba(0, 0, 0, 0.25)' : 'none',
+                                        transition: 'all 0.3s ease'
+}}>
+    {/* Notch for mobile */ }
+{
+    previewMode === 'mobile' && (
+        <div style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '150px',
+            height: '30px',
+            background: '#1a1a1a',
+            borderBottomLeftRadius: '20px',
+            borderBottomRightRadius: '20px',
+            zIndex: 1000
+        }} />
+    )
+}
+
+{/* Store Content */ }
+<div style={{
+    height: '100%',
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    paddingTop: previewMode === 'mobile' ? '30px' : '0'
+}}>
+    <QuickEditWrapper
+        isEnabled={quickEditMode}
+        onEdit={() => setActiveEditElement({ type: 'header' })}
+        type="header"
+    >
+        <Header cartCount={0} />
+        {activeEditElement?.type === 'header' && (
+                                <TextToolbar
+                        <Footer />
+                        {activeEditElement?.type === 'footer' && (
+            <FooterToolbar
+                onAction={(action) => handleQuickEditAction('footer', action)}
+            />
+        )}
+    </QuickEditWrapper>
+</div>
+
+{/* Active Popover */ }
+{
+    activePopover && (
+        <QuickEditPopover
+            type={activePopover.type}
+            initialValue={activePopover.initialValue}
+            fields={activePopover.fields}
+            onSave={activePopover.onSave}
+            onClose={() => setActivePopover(null)}
+            position={activePopover.position}
+        />
+    )
+}
+
+{/* Slide Edit Popover */ }
+{
+    slideEditPopover && (
+        <SlideEditPopover
+            initialValue={slideEditPopover.initialValue}
+            onSave={(updatedSlide) => {
+                slideEditPopover.onSave(updatedSlide);
+                setSlideEditPopover(null);
+            }}
+            onClose={() => setSlideEditPopover(null)}
+            position={{ top: '50%', left: '50%' }}
+        />
+    )
+}
+                </div >
+            </div >
+        </div >
+    );
+};
+
+export default StoreBuilder;
